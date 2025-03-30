@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Previsão do Tempo - Ubaí</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #0f274d, #1b4a8f);
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    body.night {
+      background: linear-gradient(to bottom, #0b0f1a, #1c1c2c);
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 10px 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      margin: 0;
+    }
+
+    .clock {
+      font-size: 1.2rem;
+      margin-top: 8px;
+      color: #ccc;
+    }
+
+    .weather-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      padding: 30px 60px;
+      flex: 1;
+      width: 100%;
+      align-items: center;
+      z-index: 2;
+    }
+
+    .weather-card {
+      flex: 1;
+      max-width: 33%;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 20px;
+      padding: 40px 20px;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .weather-card h2 {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+    }
+
+    .weather-icon {
+      font-size: 4rem;
+      margin: 15px 0;
+    }
+
+    .temp-range {
+      font-weight: bold;
+      font-size: 1.6rem;
+      margin: 10px 0;
+    }
+
+    .description, .rain {
+      font-size: 1.2rem;
+      margin-top: 5px;
+      color: #d8e8ff;
+    }
+
+    @media (max-width: 1024px) {
+      .weather-container {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+      }
+      .weather-card {
+        max-width: none;
+        width: 100%;
+      }
+    }
+
+    /* EFEITOS VISUAIS DE FUNDO */
+    .background-effect {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .sun {
+      position: absolute;
+      top: 10%;
+      left: 10%;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,255,0,0.25) 0%, rgba(255,255,0,0) 70%);
+      border-radius: 50%;
+      opacity: 0.4;
+      animation: pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.1); opacity: 0.6; }
+    }
+
+    .raindrop {
+      position: absolute;
+      width: 2px;
+      height: 15px;
+      background: rgba(173, 216, 230, 0.7);
+      animation: drop 1s linear infinite;
+    }
+
+    @keyframes drop {
+      0% { top: -20px; }
+      100% { top: 110%; }
+    }
+
+    .clouds::before, .clouds::after {
+      content: '';
+      position: absolute;
+      top: 15%;
+      width: 300px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      animation: cloudMove 40s linear infinite;
+    }
+
+    .clouds::after {
+      top: 25%;
+      left: 50%;
+      width: 400px;
+      animation-delay: 20s;
+    }
+
+    @keyframes cloudMove {
+      0% { left: -500px; }
+      100% { left: 120%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="background-effect" id="bg-effect"></div>
+
+  <header>
+    <h1>Previsão do Tempo - Ubaí, MG</h1>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <div class="weather-container" id="weather-container"></div>
+
+  <script>
+    const apiKey = 'c80f9de580427b5cf070f20a7731c45d';
+    const latitude = -16.2889;
+    const longitude = -44.7781;
+
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const weatherIcons = {
+      'Clear': '☀️',
+      'Clouds': '☁️',
+      'Rain': '🌧️',
+      'Drizzle': '🌦️',
+      'Thunderstorm': '⛈️',
+      'Snow': '❄️',
+      'Mist': '🌫️'
+    };
+
+    function updateClock() {
+      const now = new Date();
+      const h = now.getHours().toString().padStart(2, '0');
+      const m = now.getMinutes().toString().padStart(2, '0');
+      const s = now.getSeconds().toString().padStart(2, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+      if (h >= 18 || h < 6) {
+        document.body.classList.add('night');
+      } else {
+        document.body.classList.remove('night');
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function createRainEffect() {
+      const bg = document.getElementById('bg-effect');
+      for (let i = 0; i < 80; i++) {
+        const drop = document.createElement('div');
+        drop.className = 'raindrop';
+        drop.style.left = `${Math.random() * 100}%`;
+        drop.style.animationDelay = `${Math.random()}s`;
+        drop.style.height = `${10 + Math.random() * 15}px`;
+        bg.appendChild(drop);
+      }
+    }
+
+    function createSunEffect() {
+      const bg = document.getElementById('bg-effect');
+      const sun = document.createElement('div');
+      sun.className = 'sun';
+      bg.appendChild(sun);
+    }
+
+    function createClouds() {
+      const bg = document.getElementById('bg-effect');
+      const cloudLayer = document.createElement('div');
+      cloudLayer.className = 'clouds';
+      bg.appendChild(cloudLayer);
+    }
+
+    async function fetchForecast() {
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&lang=pt_br&appid=${apiKey}`);
+        if (!res.ok) throw new Error('Erro ao buscar dados da previsão.');
+        const data = await res.json();
+
+        const groupedByDay = {};
+        data.list.forEach(entry => {
+          const date = new Date(entry.dt * 1000);
+          const day = date.toLocaleDateString('pt-BR');
+          if (date.getHours() === 12 && !groupedByDay[day]) {
+            groupedByDay[day] = entry;
+          }
+        });
+
+        const dailyForecasts = Object.values(groupedByDay).slice(0, 3);
+        const container = document.getElementById('weather-container');
+        container.innerHTML = '';
+
+        // Visual effect based on today
+        const todayWeather = dailyForecasts[0].weather[0].main;
+        const effectArea = document.getElementById('bg-effect');
+        effectArea.innerHTML = '';
+        if (todayWeather === 'Rain' || todayWeather === 'Drizzle' || todayWeather === 'Thunderstorm') {
+          createRainEffect();
+        } else if (todayWeather === 'Clouds') {
+          createClouds();
+        } else {
+          createSunEffect();
+        }
+
+        dailyForecasts.forEach((forecast, i) => {
+          const date = new Date(forecast.dt * 1000);
+          const dayName = i === 0 ? 'Hoje' : i === 1 ? 'Amanhã' : dayNames[date.getDay()];
+          const icon = weatherIcons[forecast.weather[0].main] || '🌡️';
+          const description = forecast.weather[0].description;
+          const tempMin = Math.round(forecast.main.temp_min);
+          const tempMax = Math.round(forecast.main.temp_max);
+          const rainChance = forecast.pop ? forecast.pop * 100 : 0;
+
+          const card = document.createElement('div');
+          card.className = 'weather-card';
+          card.innerHTML = `
+            <h2>${dayName} - ${date.toLocaleDateString('pt-BR')}</h2>
+            <div class="weather-icon">${icon}</div>
+            <div class="description">${description}</div>
+            <div class="temp-range">${tempMin}°C - ${tempMax}°C</div>
+            <div class="rain">Chuva: ${rainChance.toFixed(0)}%</div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error(err.message);
+      }
+    }
+
+    fetchForecast();
+  </script>
+</body>
+</html>
